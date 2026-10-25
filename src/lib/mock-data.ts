@@ -424,21 +424,23 @@ export type ModuleId =
   | "irrigation"
   | "disease"
   | "sensor"
-  | "heatmap";
+  | "heatmap"
+  | "input";
 
 export interface ModuleDef {
   id: ModuleId;
   label: string;
   description: string;
-  icon: string;  // lucide icon name as string
+  icon: string;
 }
 
 export const MODULES: ModuleDef[] = [
   { id: "overview",    label: "Overview",         description: "KPIs, AOI summary, attention ranking",       icon: "LayoutDashboard" },
-  { id: "map",         label: "Map View",          description: "Ethiopia AOI map + parcel list",            icon: "MapPin" },
+  { id: "map",         label: "Map View",          description: "Leaflet map + parcel list",                icon: "MapPin" },
   { id: "yield",       label: "Yield Estimation",  description: "IWCYES — features + breakdown",             icon: "TrendingUp" },
   { id: "irrigation",  label: "Irrigation Scheduling", description: "IWSS — FAO-56 soil-water balance",     icon: "Droplets" },
   { id: "disease",    label: "Disease Detection", description: "M2 UAV — severity & class distribution",    icon: "AlertTriangle" },
   { id: "sensor",     label: "Sensor Feed",       description: "NPK probe live readings",                    icon: "Radio" },
   { id: "heatmap",    label: "Attention Heatmap", description: "Parcel grid by attention priority",          icon: "Grid3x3" },
+  { id: "input",      label: "Input Data",        description: "Soil + reflectance + weather + shapefile",  icon: "Database" },
 ];

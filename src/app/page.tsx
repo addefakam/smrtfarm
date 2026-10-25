@@ -10,6 +10,7 @@ import { IrrigationSchedulingView } from "@/components/dashboard/views/irrigatio
 import { DiseaseDetectionView } from "@/components/dashboard/views/disease-detection-view";
 import { SensorFeedView } from "@/components/dashboard/views/sensor-feed-view";
 import { AttentionHeatmapView } from "@/components/dashboard/views/attention-heatmap-view";
+import { InputDataView } from "@/components/dashboard/views/input-data-view";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, RefreshCw, Bell, Wheat } from "lucide-react";
@@ -47,6 +48,8 @@ export default function Home() {
         return <SensorFeedView {...props} />;
       case "heatmap":
         return <AttentionHeatmapView {...props} />;
+      case "input":
+        return <InputDataView siteId={selectedSiteId} />;
       default:
         return null;
     }
