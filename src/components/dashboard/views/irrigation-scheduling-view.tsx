@@ -1,11 +1,14 @@
 "use client";
 
 import { SITES, getParcelsBySite, type SiteId, type Parcel } from "@/lib/mock-data";
+import { useLiveSensorData } from "@/hooks/use-live-sensor-data";
+import { InterventionsFeed } from "@/components/dashboard/interventions-feed";
+import { LiveChartCard, CHART_COLORS } from "@/components/dashboard/live-chart-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
-import { Droplets, CloudRain, Thermometer, Wind, Sun, Cloud, Gauge } from "lucide-react";
+import { Droplets, CloudRain, Thermometer, Wind, Sun, Cloud, Gauge, Activity } from "lucide-react";
 
 interface IrrigationSchedulingViewProps {
   siteId: SiteId;
@@ -16,7 +19,9 @@ interface IrrigationSchedulingViewProps {
 export function IrrigationSchedulingView({ siteId, selectedParcelId, onSelectParcel }: IrrigationSchedulingViewProps) {
   const site = SITES.find(s => s.id === siteId)!;
   const parcels = getParcelsBySite(siteId);
-  const weather = site.weatherToday;
+  // Live weather + per-parcel moisture for real-time scheduling
+  const { latestWeather, latest, live, interventions, lastUpdate } = useLiveSensorData({ siteId, intervalMs: 3000 });
+  const weather = latestWeather ?? site.weatherToday;
 
   // Sort by soil-water depletion (highest = most urgent)
   const sortedParcels = [...parcels].sort((a, b) => b.soilWaterDepletion - a.soilWaterDepletion);
@@ -295,6 +300,74 @@ export function IrrigationSchedulingView({ siteId, selectedParcelId, onSelectPar
           </div>
         </CardContent>
       </Card>
+
+      {/* Live charts: ET₀ + RH + selected parcel moisture */}
+      {selectedParcel && live[selectedParcel.id] && latest[selectedParcel.id] && (
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Activity className="w-4 h-4 text-blue-600" />
+                Live Pattern Tracking
+                <Badge variant="outline" className="text-[10px] border-emerald-400 text-emerald-700 font-semibold">
+                  <span className="relative flex h-2 w-2 mr-1">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-600" />
+                  </span>
+                  LIVE
+                </Badge>
+              </CardTitle>
+              <div className="text-[10px] text-muted-foreground">
+                Last update: <span className="font-mono font-semibold text-foreground">{new Date(lastUpdate).toLocaleTimeString()}</span>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {selectedParcel.parcelCode} · {selectedParcel.owner} · 3s interval · 30-point rolling buffer (~90s window)
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+              <LiveChartCard
+                title="Soil Moisture" unit="%"
+                values={live[selectedParcel.id].moisture}
+                timestamps={live[selectedParcel.id].timestamps}
+                color={CHART_COLORS.blue}
+                minThreshold={25} maxThreshold={50}
+                height={130}
+                icon={Droplets} iconColor="text-blue-600"
+              />
+              <LiveChartCard
+                title="Reference ET₀" unit="mm/d"
+                values={live[selectedParcel.id].soilTemp.length > 0 ?
+                  Array.from({ length: live[selectedParcel.id].soilTemp.length }, (_, i) =>
+                    Math.round((0.0023 * weather.solarRad * (live[selectedParcel.id].soilTemp[i] + 17.8) *
+                      Math.sqrt(Math.max(0.1, weather.tMax - weather.tMin))) * 10) / 10
+                  ) : []}
+                timestamps={live[selectedParcel.id].timestamps}
+                color={CHART_COLORS.orange}
+                minThreshold={3}
+                height={130}
+                icon={Gauge} iconColor="text-orange-600"
+              />
+              <LiveChartCard
+                title="Air Humidity" unit="%"
+                values={live[selectedParcel.id].humidity}
+                timestamps={live[selectedParcel.id].timestamps}
+                color={CHART_COLORS.teal}
+                minThreshold={40} maxThreshold={85}
+                height={130}
+                icon={Droplets} iconColor="text-teal-600"
+              />
+            </div>
+            <div className="mt-2 text-[10px] text-muted-foreground text-center">
+              Red dashed line = critical threshold · live ET₀ recomputed every tick from soil T + solar radiation
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Auto-detected interventions */}
+      <InterventionsFeed interventions={interventions} maxItems={8} />
     </div>
   );
 }
