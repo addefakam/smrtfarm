@@ -2,12 +2,30 @@
  * Mock data for the Precision Farming Ecosystem dashboard.
  * Simulates the data that would come from PostGIS + Firebase in production.
  *
- * This is reproducible mock data — seeded random ensures the dashboard
- * looks the same on every render, but the values are realistic for
- * Ethiopian irrigated wheat at the three pilot sites.
+ * v1.2 expansion:
+ *  - NPK sensor readings per parcel (N, P, K, pH, EC, soil moisture, soil temp, air humidity)
+ *  - Weather data per AOI (T_max/min, RH, wind, solar_rad, rain, ET₀)
+ *  - UAV mission metadata + shapefile metadata per parcel
+ *  - Spectral reflectance per parcel (Blue, Green, Red, NIR, RE, SWIR1)
+ *  - Yield feature contributions for XGBoost interpretability
+ *
+ * Reproducible mock data — seeded random ensures the dashboard
+ * looks the same on every render.
  */
 
 export type SiteId = "bishoftu" | "asella" | "ambo";
+
+export interface WeatherData {
+  date: string;
+  t_max: number;    // °C
+  t_min: number;    // °C
+  t_mean: number;   // °C
+  rh: number;       // %
+  wind_speed: number;  // m/s
+  solar_rad: number;   // MJ/m²/day
+  rain: number;        // mm
+  et0: number;         // mm/day (FAO-56 Penman-Monteith)
+}
 
 export interface Site {
   id: SiteId;
@@ -26,6 +44,8 @@ export interface Site {
   diseaseRisk: number;
   yieldForecast: number;
   activeAlerts: number;
+  weatherToday: WeatherData;
+  weather7d: WeatherData[];
 }
 
 export type ParcelStatus =
@@ -35,89 +55,142 @@ export type ParcelStatus =
   | "disease"
   | "low_yield";
 
+export interface YieldFeatures {
+  ndvi_contribution: number;
+  ndre_contribution: number;
+  soil_N_contribution: number;
+  soil_P_contribution: number;
+  soil_K_contribution: number;
+  disease_contribution: number; // typically negative
+  weather_contribution: number;
+}
+
 export interface Parcel {
   id: string;
   siteId: SiteId;
   parcelCode: string;
   owner: string;
   areaHa: number;
-  soilMoisture: number; // %
-  soilTemp: number;     // °C
-  ndvi: number;         // 0-1
-  ndre: number;         // 0-1
-  diseaseSeverity: number; // 0-100 %
-  diseaseClass: string | null;
-  yieldForecast: number;   // t/ha
-  lastIrrigationDays: number; // days since last irrigation
-  irrigationAdvisoryMm: number; // recommended mm today (0 = no irrigation)
-  status: ParcelStatus;
   sowingDate: string;
   growthStage: string;
-  ndviTrend7d: number[];  // last 7 days NDVI
-  moistureTrend7d: number[]; // last 7 days moisture
+  cultivar: string;
+
+  // ── NPK sensor readings (in-situ) ──
+  soilN: number;        // ppm
+  soilP: number;        // ppm (Olsen)
+  soilK: number;        // ppm (exchangeable)
+  soilPh: number;       // pH
+  soilEc: number;       // dS/m
+  soilMoisture: number; // %
+  soilTemp: number;     // °C
+  humidity: number;     // % (air humidity at sensor)
+
+  // ── Spectral reflectance per band (0-1) ──
+  spectralBlue: number;
+  spectralGreen: number;
+  spectralRed: number;
+  spectralNIR: number;
+  spectralRE: number;     // red edge
+  spectralSWIR1: number;
+
+  // ── Derived vegetation indices ──
+  ndvi: number;
+  ndre: number;
+  ndmi: number;
+  gndvi: number;
+  savi: number;
+  lai: number;  // empirical
+
+  // ── Disease (from M2 UAV inference) ──
+  diseaseSeverity: number; // 0-100 %
+  diseaseClass: string | null;
+
+  // ── Yield (from M5 IWCYES) ──
+  yieldForecast: number;  // t/ha
+  yieldFeatures: YieldFeatures;
+
+  // ── Irrigation (from M4 IWSS — FAO-56) ──
+  lastIrrigationDays: number;
+  irrigationAdvisoryMm: number;
+  soilWaterDepletion: number;  // mm
+  currentKc: number;            // crop coefficient
+  currentKcb: number;           // basal crop coefficient
+
+  // ── UAV mission metadata ──
+  uavLastMission: string;
+  uavImageCount: number;
+  uavBands: string[];
+  shapefileVerified: boolean;
+  parcelShape: "rect" | "irregular" | "triangle";
+
+  status: ParcelStatus;
+  ndviTrend7d: number[];
+  moistureTrend7d: number[];
+  humidityTrend7d: number[];
 }
 
-// ─── Sites ─────────────────────────────────────────────────────────
-export const SITES: Site[] = [
-  {
-    id: "bishoftu",
-    name: "Bishoftu ARC",
-    fullName: "Bishoftu Agricultural Research Center",
-    lat: 8.7347,
-    lon: 39.0085,
-    elevation: 1920,
-    region: "Oromia",
-    zone: "East Shewa",
-    phase: "Phase 1 — Pilot Build",
-    parcelCount: 32,
-    totalAreaHa: 58.4,
-    meanMoisture: 34,
-    meanNdvi: 0.71,
-    diseaseRisk: 11,
-    yieldForecast: 4.3,
-    activeAlerts: 7,
-  },
-  {
-    id: "asella",
-    name: "Asella AERC",
-    fullName: "Asella Agricultural Engineering Research Center",
-    lat: 7.9500,
-    lon: 39.1170,
-    elevation: 2430,
-    region: "Oromia",
-    zone: "Arsi",
-    phase: "Phase 2 — Replication",
-    parcelCount: 28,
-    totalAreaHa: 51.2,
-    meanMoisture: 41,
-    meanNdvi: 0.74,
-    diseaseRisk: 8,
-    yieldForecast: 4.6,
-    activeAlerts: 4,
-  },
-  {
-    id: "ambo",
-    name: "Ambo ARC",
-    fullName: "Ambo Agricultural Research Center",
-    lat: 8.9500,
-    lon: 37.8667,
-    elevation: 2225,
-    region: "Oromia",
-    zone: "West Shewa",
-    phase: "Phase 2 — Replication",
-    parcelCount: 24,
-    totalAreaHa: 42.8,
-    meanMoisture: 29,
-    meanNdvi: 0.68,
-    diseaseRisk: 14,
-    yieldForecast: 4.0,
-    activeAlerts: 5,
-  },
-];
+// ─── Sites with weather data ─────────────────────────────────────
+function generateWeather(siteId: SiteId, dayOffset = 0): WeatherData {
+  // Each AOI has different baseline climate
+  const baseT: Record<SiteId, { max: number; min: number; rh: number }> = {
+    bishoftu: { max: 27, min: 12, rh: 58 },  // warmer, drier
+    asella:   { max: 22, min: 8,  rh: 68 },  // cooler, wetter
+    ambo:     { max: 24, min: 10, rh: 62 },  // mid
+  };
+  const b = baseT[siteId];
+  const seed = siteId.charCodeAt(0) * 31 + dayOffset * 7;
+  const rng = mulberry32(seed);
+  const t_max = Math.round((b.max + (rng() - 0.5) * 4) * 10) / 10;
+  const t_min = Math.round((b.min + (rng() - 0.5) * 3) * 10) / 10;
+  const t_mean = Math.round(((t_max + t_min) / 2) * 10) / 10;
+  const rh = Math.round(b.rh + (rng() - 0.5) * 12);
+  const wind_speed = Math.round((1.5 + rng() * 2.5) * 10) / 10;
+  const solar_rad = Math.round((18 + rng() * 6) * 10) / 10;
+  const rain = rng() < 0.25 ? Math.round(rng() * 12 * 10) / 10 : 0;
+  // Simplified FAO-56 ET₀ (mm/day)
+  const et0 = Math.round((0.0023 * solar_rad * (t_mean + 17.8) * Math.sqrt(t_max - t_min)) * 10) / 10;
 
-// ─── Ethiopia SVG outline (schematic, not survey-grade) ──────────
-// Coordinates: [lon, lat] pairs; viewBox is "33 3 16 12.5"
-// (longitude 33-49, latitude 3-15.5)
+  const today = new Date();
+  today.setDate(today.getDate() - dayOffset);
+  return {
+    date: today.toISOString().slice(0, 10),
+    t_max, t_min, t_mean, rh, wind_speed, solar_rad, rain, et0,
+  };
+}
+
+export const SITES: Site[] = (() => {
+  const sites: Site[] = [];
+  const siteMeta: Array<Omit<Site, "weatherToday" | "weather7d">> = [
+    {
+      id: "bishoftu", name: "Bishoftu ARC", fullName: "Bishoftu Agricultural Research Center",
+      lat: 8.7347, lon: 39.0085, elevation: 1920, region: "Oromia", zone: "East Shewa",
+      phase: "Phase 1 — Pilot Build", parcelCount: 32, totalAreaHa: 58.4,
+      meanMoisture: 34, meanNdvi: 0.71, diseaseRisk: 11, yieldForecast: 4.3, activeAlerts: 7,
+    },
+    {
+      id: "asella", name: "Asella AERC", fullName: "Asella Agricultural Engineering Research Center",
+      lat: 7.9500, lon: 39.1170, elevation: 2430, region: "Oromia", zone: "Arsi",
+      phase: "Phase 2 — Replication", parcelCount: 28, totalAreaHa: 51.2,
+      meanMoisture: 41, meanNdvi: 0.74, diseaseRisk: 8, yieldForecast: 4.6, activeAlerts: 4,
+    },
+    {
+      id: "ambo", name: "Ambo ARC", fullName: "Ambo Agricultural Research Center",
+      lat: 8.9500, lon: 37.8667, elevation: 2225, region: "Oromia", zone: "West Shewa",
+      phase: "Phase 2 — Replication", parcelCount: 24, totalAreaHa: 42.8,
+      meanMoisture: 29, meanNdvi: 0.68, diseaseRisk: 14, yieldForecast: 4.0, activeAlerts: 5,
+    },
+  ];
+  for (const s of siteMeta) {
+    sites.push({
+      ...s,
+      weatherToday: generateWeather(s.id, 0),
+      weather7d: Array.from({ length: 7 }, (_, i) => generateWeather(s.id, 6 - i)),
+    });
+  }
+  return sites;
+})();
+
+// ─── Ethiopia SVG outline (schematic) ───────────────────────────
 export const ETHIOPIA_OUTLINE: [number, number][] = [
   [33.0, 5.0], [35.0, 4.5], [37.5, 3.5], [40.5, 3.7], [42.0, 4.5],
   [44.0, 4.5], [45.5, 5.5], [47.5, 7.5], [48.0, 9.0], [47.5, 11.0],
@@ -126,7 +199,7 @@ export const ETHIOPIA_OUTLINE: [number, number][] = [
   [35.5, 11.0], [35.0, 10.0], [34.0, 9.0], [33.5, 7.5], [33.0, 6.0],
 ];
 
-// ─── Deterministic PRNG (mulberry32) ──────────────────────────────
+// ─── PRNG (mulberry32) ───────────────────────────────────────────
 function mulberry32(seed: number) {
   return function () {
     seed |= 0;
@@ -137,66 +210,107 @@ function mulberry32(seed: number) {
   };
 }
 
-// ─── Ethiopian names (for parcel owners) ──────────────────────────
-const SURNAMES = [
-  "Tadesse", "Bekele", "Haile", "Girmay", "Alemu", "Tesfaye", "Assefa",
-  "Gebre", "Mekonnen", "Desta", "Solomon", "Yohannes", "Berhe", "Kifle",
-  "Negash", "Wolde", "Arega", "Hailu", "Tesemma", "Mulu",
-];
-const FIRST_NAMES = [
-  "Bekele", "Abebe", "Dawit", "Selam", "Meriem", "Yonas", "Hanna",
-  "Robel", "Saba", "Nahom", "Rahel", "Filmon", "Selamawit", "Mussie",
-  "Helen", "Samuel", "Lidia", "Biniam", "Nardos", "Eyob",
-];
-function randomOwner(rng: () => number, idx: number): string {
-  const f = FIRST_NAMES[Math.floor(rng() * FIRST_NAMES.length)];
-  const s = SURNAMES[Math.floor(rng() * SURNAMES.length)];
-  return `${f} ${s}`;
+const SURNAMES = ["Tadesse", "Bekele", "Haile", "Girmay", "Alemu", "Tesfaye", "Assefa", "Gebre", "Mekonnen", "Desta", "Solomon", "Yohannes", "Berhe", "Kifle", "Negash", "Wolde", "Arega", "Hailu", "Tesemma", "Mulu"];
+const FIRST_NAMES = ["Bekele", "Abebe", "Dawit", "Selam", "Meriem", "Yonas", "Hanna", "Robel", "Saba", "Nahom", "Rahel", "Filmon", "Selamawit", "Mussie", "Helen", "Samuel", "Lidia", "Biniam", "Nardos", "Eyob"];
+const CULTIVARS = ["Danda'a", "Hidase", "Ogolcho", "Kakaba", "Fentale", "ET-13A2", "Boohai", "Picaflor"];
+
+function randomOwner(rng: () => number): string {
+  return `${FIRST_NAMES[Math.floor(rng() * FIRST_NAMES.length)]} ${SURNAMES[Math.floor(rng() * SURNAMES.length)]}`;
 }
 
-// ─── Growth stages ────────────────────────────────────────────────
-const GROWTH_STAGES = [
-  "Germination", "Tillering", "Stem extension", "Booting",
-  "Heading", "Flowering", "Milk", "Dough", "Ripening",
-];
+const GROWTH_STAGES = ["Germination", "Tillering", "Stem extension", "Booting", "Heading", "Flowering", "Milk", "Dough", "Ripening"];
+const DISEASE_CLASSES = ["Yellow rust", "Stem rust", "Leaf rust", "Powdery mildew", "Septoria leaf blotch", "Tan spot", null, null, null, null, null];
 
-// ─── Disease classes ──────────────────────────────────────────────
-const DISEASE_CLASSES = [
-  "Yellow rust", "Stem rust", "Leaf rust", "Powdery mildew",
-  "Septoria leaf blotch", "Tan spot", null, null, null, null, null,
-];
-
-// ─── Generate parcels per site ────────────────────────────────────
 function generateParcels(): Parcel[] {
   const allParcels: Parcel[] = [];
   SITES.forEach((site, siteIdx) => {
     const rng = mulberry32(siteIdx * 1000 + 42);
     for (let i = 0; i < site.parcelCount; i++) {
       const code = `${site.id.slice(0, 3).toUpperCase()}-${String(i + 1).padStart(3, "0")}`;
+
+      // ── NPK sensor readings ──
+      const soilN = Math.round((10 + rng() * 80) * 10) / 10;  // 10-90 ppm
+      const soilP = Math.round((5 + rng() * 35) * 10) / 10;  // 5-40 ppm (Olsen)
+      const soilK = Math.round((80 + rng() * 350) * 10) / 10; // 80-430 ppm
+      const soilPh = Math.round((5.5 + rng() * 1.8) * 10) / 10; // 5.5-7.3
+      const soilEc = Math.round((0.2 + rng() * 1.5) * 100) / 100; // 0.2-1.7 dS/m
       const soilMoisture = Math.round((15 + rng() * 35) * 10) / 10;
-      const ndvi = Math.round((0.45 + rng() * 0.4) * 100) / 100;
-      const ndre = Math.round((0.20 + rng() * 0.25) * 100) / 100;
+      const soilTemp = Math.round((18 + rng() * 8) * 10) / 10;
+      const humidity = Math.round((45 + rng() * 40)); // 45-85%
+
+      // ── Spectral reflectance (per band) ──
+      const spectralBlue = Math.round((0.04 + rng() * 0.08) * 1000) / 1000;
+      const spectralGreen = Math.round((0.06 + rng() * 0.10) * 1000) / 1000;
+      const spectralRed = Math.round((0.03 + rng() * 0.08) * 1000) / 1000;
+      const spectralNIR = Math.round((0.35 + rng() * 0.35) * 1000) / 1000;
+      const spectralRE = Math.round((0.20 + rng() * 0.20) * 1000) / 1000;
+      const spectralSWIR1 = Math.round((0.10 + rng() * 0.20) * 1000) / 1000;
+
+      // ── Derived vegetation indices ──
+      const ndvi = Math.round(((spectralNIR - spectralRed) / (spectralNIR + spectralRed)) * 100) / 100;
+      const ndre = Math.round(((spectralNIR - spectralRE) / (spectralNIR + spectralRE)) * 100) / 100;
+      const ndmi = Math.round(((spectralNIR - spectralSWIR1) / (spectralNIR + spectralSWIR1)) * 100) / 100;
+      const gndvi = Math.round(((spectralNIR - spectralGreen) / (spectralNIR + spectralGreen)) * 100) / 100;
+      const savi = Math.round((((spectralNIR - spectralRed) / (spectralNIR + spectralRed + 0.5)) * 1.5) * 100) / 100;
+      const lai = Math.round((Math.max(0, ndvi) * 5.5) * 10) / 10;
+
+      // ── Disease ──
       const diseaseSeverity = rng() < 0.25 ? Math.round(rng() * 35) : 0;
       const diseaseClass = diseaseSeverity > 5
         ? DISEASE_CLASSES[Math.floor(rng() * 6)]
         : null;
-      const yieldForecast = Math.round((2.8 + rng() * 2.4 + (ndvi - 0.5) * 1.5) * 10) / 10;
+
+      // ── Yield forecast with feature contributions ──
+      const yieldForecast = Math.round((2.8 + rng() * 2.4 + (ndvi - 0.5) * 1.5 - diseaseSeverity * 0.02) * 10) / 10;
+
+      // Feature contributions for XGBoost interpretability (sum to ~yieldForecast - 3.5 baseline)
+      const baselineYield = 3.5;
+      const totalContribution = yieldForecast - baselineYield;
+      // Weight allocation
+      const weights = {
+        ndvi: 0.30, ndre: 0.12, soilN: 0.18, soilP: 0.08, soilK: 0.10,
+        disease: -diseaseSeverity * 0.015, weather: 0.15,
+      };
+      const weightsTotal = Math.abs(weights.ndvi) + Math.abs(weights.ndre) + Math.abs(weights.soilN) +
+        Math.abs(weights.soilP) + Math.abs(weights.soilK) + Math.abs(weights.disease) + Math.abs(weights.weather);
+      const scale = totalContribution / weightsTotal;
+      const yieldFeatures: YieldFeatures = {
+        ndvi_contribution: Math.round((weights.ndvi * scale + (ndvi - 0.6) * 1.0) * 100) / 100,
+        ndre_contribution: Math.round((weights.ndre * scale + (ndre - 0.25) * 0.5) * 100) / 100,
+        soil_N_contribution: Math.round((weights.soilN * scale + (soilN - 40) * 0.005) * 100) / 100,
+        soil_P_contribution: Math.round((weights.soilP * scale + (soilP - 15) * 0.01) * 100) / 100,
+        soil_K_contribution: Math.round((weights.soilK * scale + (soilK - 200) * 0.001) * 100) / 100,
+        disease_contribution: Math.round(weights.disease * 100) / 100,
+        weather_contribution: Math.round((weights.weather * scale + (site.weatherToday.et0 - 4) * 0.05) * 100) / 100,
+      };
+
+      // ── Irrigation ──
       const lastIrrigationDays = Math.floor(rng() * 8);
-      const soilTemp = Math.round((18 + rng() * 8) * 10) / 10;
+      const soilWaterDepletion = Math.round((20 + (35 - soilMoisture) * 1.5 + lastIrrigationDays * 1.2) * 10) / 10;
+      const currentKc = Math.round((0.4 + rng() * 0.65) * 100) / 100; // 0.4-1.05
+      const currentKcb = Math.round((currentKc - 0.05 - rng() * 0.1) * 100) / 100;
+      let irrigationAdvisoryMm = 0;
+      if (soilMoisture < 25) irrigationAdvisoryMm = 15 + Math.floor(rng() * 10);
+      else if (soilMoisture < 32 && lastIrrigationDays > 4) irrigationAdvisoryMm = 8 + Math.floor(rng() * 8);
 
-      // Irrigation advisory: if moisture < 25% OR last irrigation > 5 days, recommend
-      let advisoryMm = 0;
-      if (soilMoisture < 25) advisoryMm = 15 + Math.floor(rng() * 10);
-      else if (soilMoisture < 32 && lastIrrigationDays > 4) advisoryMm = 8 + Math.floor(rng() * 8);
+      // ── UAV mission ──
+      const uavDay = Math.floor(rng() * 9);
+      const uavDate = new Date();
+      uavDate.setDate(uavDate.getDate() - uavDay);
+      const uavLastMission = uavDate.toISOString().slice(0, 10);
+      const uavImageCount = Math.floor(50 + rng() * 250);
+      const uavBands = rng() > 0.3 ? ["RGB", "MS", "Thermal"] : ["RGB", "MS"];
+      const shapefileVerified = rng() > 0.1;
+      const parcelShape = (["rect", "irregular", "triangle"] as const)[Math.floor(rng() * 3)];
 
-      // Status flag
+      // ── Status ──
       let status: ParcelStatus = "healthy";
       if (diseaseSeverity > 15) status = "disease";
-      else if (advisoryMm > 10) status = "irrigate";
+      else if (irrigationAdvisoryMm > 10) status = "irrigate";
       else if (yieldForecast < 3.2) status = "low_yield";
       else if (soilMoisture < 32 || ndvi < 0.6) status = "watch";
 
-      // 7-day trend
+      // ── 7-day trends ──
       const ndviTrend7d = Array.from({ length: 7 }, (_, k) => {
         const drift = (rng() - 0.5) * 0.04;
         return Math.round((ndvi - drift * (7 - k)) * 100) / 100;
@@ -205,27 +319,29 @@ function generateParcels(): Parcel[] {
         const drift = (rng() - 0.4) * 4;
         return Math.round(soilMoisture - drift * (7 - k) * 0.4);
       });
+      const humidityTrend7d = Array.from({ length: 7 }, (_, k) => {
+        const drift = (rng() - 0.3) * 8;
+        return Math.round(humidity - drift * (7 - k) * 0.3);
+      });
 
       allParcels.push({
         id: `${site.id}-${i + 1}`,
         siteId: site.id,
         parcelCode: code,
-        owner: randomOwner(rng, i),
+        owner: randomOwner(rng),
         areaHa: Math.round((0.5 + rng() * 3) * 10) / 10,
-        soilMoisture,
-        soilTemp,
-        ndvi,
-        ndre,
-        diseaseSeverity,
-        diseaseClass,
-        yieldForecast,
-        lastIrrigationDays,
-        irrigationAdvisoryMm: advisoryMm,
-        status,
         sowingDate: `2026-${6 + Math.floor(rng() * 2)}-${1 + Math.floor(rng() * 28)}`,
         growthStage: GROWTH_STAGES[Math.floor(rng() * GROWTH_STAGES.length)],
-        ndviTrend7d,
-        moistureTrend7d,
+        cultivar: CULTIVARS[Math.floor(rng() * CULTIVARS.length)],
+        soilN, soilP, soilK, soilPh, soilEc, soilMoisture, soilTemp, humidity,
+        spectralBlue, spectralGreen, spectralRed, spectralNIR, spectralRE, spectralSWIR1,
+        ndvi, ndre, ndmi, gndvi, savi, lai,
+        diseaseSeverity, diseaseClass,
+        yieldForecast, yieldFeatures,
+        lastIrrigationDays, irrigationAdvisoryMm, soilWaterDepletion, currentKc, currentKcb,
+        uavLastMission, uavImageCount, uavBands, shapefileVerified, parcelShape,
+        status,
+        ndviTrend7d, moistureTrend7d, humidityTrend7d,
       });
     }
   });
@@ -234,19 +350,14 @@ function generateParcels(): Parcel[] {
 
 export const ALL_PARCELS: Parcel[] = generateParcels();
 
-// ─── Helper: get parcels by site ──────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────
 export function getParcelsBySite(siteId: SiteId): Parcel[] {
   return ALL_PARCELS.filter(p => p.siteId === siteId);
 }
 
-// ─── Helper: get attention ranking (top N most-urgent parcels) ──
 export function getAttentionRanking(siteId: SiteId, limit = 8): Parcel[] {
   const statusWeight: Record<ParcelStatus, number> = {
-    disease: 4,
-    irrigate: 3,
-    low_yield: 2,
-    watch: 1,
-    healthy: 0,
+    disease: 4, irrigate: 3, low_yield: 2, watch: 1, healthy: 0,
   };
   return getParcelsBySite(siteId)
     .slice()
@@ -258,7 +369,6 @@ export function getAttentionRanking(siteId: SiteId, limit = 8): Parcel[] {
     .slice(0, limit);
 }
 
-// ─── Helper: get KPI summary for a site ───────────────────────────
 export function getSiteKPIs(siteId: SiteId) {
   const parcels = getParcelsBySite(siteId);
   const totalArea = parcels.reduce((s, p) => s + p.areaHa, 0);
@@ -281,7 +391,23 @@ export function getSiteKPIs(siteId: SiteId) {
   };
 }
 
-// ─── Status color mapping ─────────────────────────────────────────
+// ─── Disease distribution (per site) ─────────────────────────────
+export function getDiseaseDistribution(siteId: SiteId): Array<{ class: string; count: number; avgSeverity: number }> {
+  const parcels = getParcelsBySite(siteId);
+  const byClass: Record<string, Parcel[]> = {};
+  for (const p of parcels) {
+    if (!p.diseaseClass) continue;
+    if (!byClass[p.diseaseClass]) byClass[p.diseaseClass] = [];
+    byClass[p.diseaseClass].push(p);
+  }
+  return Object.entries(byClass).map(([cls, ps]) => ({
+    class: cls,
+    count: ps.length,
+    avgSeverity: Math.round(ps.reduce((s, p) => s + p.diseaseSeverity, 0) / ps.length),
+  })).sort((a, b) => b.count - a.count);
+}
+
+// ─── Status colors ─────────────────────────────────────────────────
 export const STATUS_COLORS: Record<ParcelStatus, { bg: string; text: string; ring: string; label: string }> = {
   healthy:   { bg: "bg-emerald-500",   text: "text-emerald-700",   ring: "ring-emerald-200",   label: "Healthy" },
   watch:     { bg: "bg-amber-500",    text: "text-amber-700",     ring: "ring-amber-200",     label: "Watch" },
@@ -289,3 +415,30 @@ export const STATUS_COLORS: Record<ParcelStatus, { bg: string; text: string; rin
   disease:   { bg: "bg-rose-500",     text: "text-rose-700",      ring: "ring-rose-200",      label: "Disease" },
   low_yield: { bg: "bg-orange-500",   text: "text-orange-700",    ring: "ring-orange-200",    label: "Low yield" },
 };
+
+// ─── Sidebar module IDs ──────────────────────────────────────────
+export type ModuleId =
+  | "overview"
+  | "map"
+  | "yield"
+  | "irrigation"
+  | "disease"
+  | "sensor"
+  | "heatmap";
+
+export interface ModuleDef {
+  id: ModuleId;
+  label: string;
+  description: string;
+  icon: string;  // lucide icon name as string
+}
+
+export const MODULES: ModuleDef[] = [
+  { id: "overview",    label: "Overview",         description: "KPIs, AOI summary, attention ranking",       icon: "LayoutDashboard" },
+  { id: "map",         label: "Map View",          description: "Ethiopia AOI map + parcel list",            icon: "MapPin" },
+  { id: "yield",       label: "Yield Estimation",  description: "IWCYES — features + breakdown",             icon: "TrendingUp" },
+  { id: "irrigation",  label: "Irrigation Scheduling", description: "IWSS — FAO-56 soil-water balance",     icon: "Droplets" },
+  { id: "disease",    label: "Disease Detection", description: "M2 UAV — severity & class distribution",    icon: "AlertTriangle" },
+  { id: "sensor",     label: "Sensor Feed",       description: "NPK probe live readings",                    icon: "Radio" },
+  { id: "heatmap",    label: "Attention Heatmap", description: "Parcel grid by attention priority",          icon: "Grid3x3" },
+];
