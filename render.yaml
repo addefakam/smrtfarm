@@ -1,0 +1,36 @@
+# Render Blueprint — Precision Farming Ecosystem Dashboard
+# https://render.com/docs/blueprint-spec
+# Deploy this by:
+#   1. Pushing this repo to GitHub (DivergenTechnology/smartfarming-ecosystem)
+#   2. Creating a new Blueprint on Render: https://dashboard.render.com/select-blueprint
+#   3. Connecting the GitHub repo — Render will read this render.yaml automatically.
+
+services:
+  - type: web
+    name: precision-farming-dashboard
+    runtime: node
+    plan: free  # upgrade to 'starter' for production
+    region: ohio  # closest to Ethiopia with decent latency
+    branch: main
+    buildCommand: npm ci --legacy-peer-deps && npm run build
+    startCommand: npm run start
+    healthCheckPath: /
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: 20.0.0
+      - key: NEXT_TELEMETRY_DISABLED
+        value: "1"
+      - key: NODE_ENV
+        value: production
+      # Mock-data dashboard requires no external services in MVP mode.
+      # When wiring real data, add:
+      # - key: DATABASE_URL
+      #   sync: false  # set manually in Render dashboard
+      # - key: FIREBASE_PROJECT_ID
+      #   sync: false
+      # - key: FIREBASE_CLIENT_EMAIL
+      #   sync: false
+      # - key: FIREBASE_PRIVATE_KEY
+      #   sync: false
+    # Render exposes the PORT env var; Next.js standalone respects it.
