@@ -24,6 +24,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { getParcelsBySite, SITES, type SiteId, type Parcel } from "@/lib/mock-data";
+import { mapDiseaseClassToKb } from "@/lib/disease-knowledge-base";
 
 export interface LiveReading {
   parcelId: string;
@@ -185,18 +186,37 @@ function detectInterventions(parcel: Parcel, live: LiveMetricBuffer, latest: Liv
   }
 
   // ─── Disease: humidity > 80% sustained ───
+  // When parcel has a known diseaseClass from UAV detection (M2), surface KB-specific
+  // treatment + damage handling instead of generic preventive advice.
   if (live.humidity.length >= 3) {
     const recent3 = live.humidity.slice(-3);
     const avgRh = recent3.reduce((a, b) => a + b, 0) / 3;
     if (avgRh > 80 && parcel.growthStage !== "Ripening") {
-      out.push({
-        id: `${id}-rh-spike`, parcelId: id, parcelCode: code, owner,
-        severity: "medium", category: "disease",
-        pattern: `Air RH sustained ${avgRh.toFixed(0)}% (3 readings)`,
-        message: "Fungal disease outbreak conditions — preventive action recommended",
-        action: "Apply preventive fungicide (triadimefon 25% WP at 0.5 kg/ha)",
-        ts: now,
-      });
+      const kb = parcel.diseaseClass ? mapDiseaseClassToKb(parcel.diseaseClass) : null;
+      if (kb) {
+        // KB-specific disease intervention
+        out.push({
+          id: `${id}-disease-kb`, parcelId: id, parcelCode: code, owner,
+          severity: kb.severityClass === "critical" ? "critical" : kb.severityClass === "high" ? "high" : "medium",
+          category: "disease",
+          pattern: `${kb.name} confirmed at ${parcel.diseaseSeverity}% severity · RH sustained ${avgRh.toFixed(0)}%`,
+          message: `${kb.name} outbreak — ${kb.pathogenType} infection confirmed by UAV (M2)`,
+          action: kb.chemicalTreatmentEffective
+            ? kb.treatment.slice(0, 130)
+            : `No chemical cure · Prevention: ${kb.damageHandling.slice(0, 130)}`,
+          ts: now,
+        });
+      } else {
+        // Generic preventive advice when no UAV-detected disease class is known
+        out.push({
+          id: `${id}-rh-spike`, parcelId: id, parcelCode: code, owner,
+          severity: "medium", category: "disease",
+          pattern: `Air RH sustained ${avgRh.toFixed(0)}% (3 readings)`,
+          message: "Fungal disease outbreak conditions — preventive action recommended",
+          action: "Apply preventive fungicide (triadimefon 25% WP at 0.5 kg/ha)",
+          ts: now,
+        });
+      }
     }
   }
 

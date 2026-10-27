@@ -1,11 +1,15 @@
 "use client";
 
 import { getParcelsBySite, getDiseaseDistribution, STATUS_COLORS, type SiteId, type Parcel } from "@/lib/mock-data";
+import {
+  mapDiseaseClassToKb, SEVERITY_STYLES, PATHOGEN_STYLES,
+} from "@/lib/disease-knowledge-base";
+import { generateVoiceDialogue } from "@/lib/disease-inference-engine";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
-import { AlertTriangle, Plane, Activity, Image as ImageIcon } from "lucide-react";
+import { AlertTriangle, Plane, Activity, Image as ImageIcon, Volume2, Microscope, Lightbulb } from "lucide-react";
 
 interface DiseaseDetectionViewProps {
   siteId: SiteId;
@@ -247,21 +251,100 @@ export function DiseaseDetectionView({ siteId, selectedParcelId, onSelectParcel 
                   <div className="flex justify-between"><span className="text-muted-foreground">Parcel shape</span><span className="font-mono">{selectedParcel.parcelShape}</span></div>
                 </div>
 
-                {/* Disease detection summary */}
-                {selectedParcel.diseaseSeverity > 0 ? (
-                  <div className="rounded-md bg-rose-50 border border-rose-200 p-2.5">
-                    <div className="text-xs font-semibold text-rose-700 mb-1">Detection result</div>
-                    <div className="text-sm font-bold text-rose-700">{selectedParcel.diseaseClass}</div>
-                    <div className="text-[10px] text-rose-700 mt-1">
-                      Severity: {selectedParcel.diseaseSeverity}% of canopy affected
-                    </div>
-                    <div className="text-[10px] text-muted-foreground mt-1">
-                      Model: EfficientNet-B0 · Confidence: 0.78 (held-out validation)
-                    </div>
-                    <div className="text-[11px] text-rose-700 mt-2 font-medium">
-                      → Advisory: fungicide application recommended within 48h
-                    </div>
-                  </div>
+                {/* Disease detection summary — KB-linked */}
+                {selectedParcel.diseaseSeverity > 0 && selectedParcel.diseaseClass ? (
+                  (() => {
+                    const kb = mapDiseaseClassToKb(selectedParcel.diseaseClass);
+                    const sevStyle = kb ? SEVERITY_STYLES[kb.severityClass] : SEVERITY_STYLES.high;
+                    const pathStyle = kb ? PATHOGEN_STYLES[kb.pathogenType] : PATHOGEN_STYLES.fungal;
+                    // Build a synthetic match for the dialogue generator (confidence from severity)
+                    const synthMatch = kb ? {
+                      disease: kb,
+                      confidence: Math.min(1, selectedParcel.diseaseSeverity / 35),
+                      matchedSymptoms: [],
+                      environmentalFit: 0.5,
+                      symptomFit: 0.5,
+                      reason: `UAV detection: ${selectedParcel.diseaseSeverity}% severity`,
+                      severity: kb.severityClass,
+                    } : null;
+                    const dialogue = synthMatch ? generateVoiceDialogue(synthMatch, selectedParcel) : null;
+                    return (
+                      <div className="rounded-md bg-rose-50 border border-rose-200 p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="text-xs font-semibold text-rose-700">Detection result (KB-linked)</div>
+                          <div className="flex items-center gap-1">
+                            {kb && (
+                              <>
+                                <Badge variant="outline" className={cn("text-[10px]", pathStyle.color)}>{pathStyle.label}</Badge>
+                                <Badge variant="outline" className={cn("text-[10px]", sevStyle.text)}>{sevStyle.label}</Badge>
+                                <Badge variant="outline" className={cn("text-[10px]",
+                                  kb.chemicalTreatmentEffective ? "text-emerald-700" : "text-rose-700"
+                                )}>
+                                  {kb.chemicalTreatmentEffective ? "Treatable" : "No cure"}
+                                </Badge>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-sm font-bold text-rose-700">{selectedParcel.diseaseClass}</div>
+                        <div className="text-[10px] text-rose-700 mt-1">
+                          Severity: {selectedParcel.diseaseSeverity}% of canopy affected · Model: EfficientNet-B0
+                        </div>
+
+                        {kb && (
+                          <div className="mt-3 space-y-2 text-xs">
+                            <div className="rounded border border-rose-200 bg-white/60 p-2">
+                              <div className="text-[10px] uppercase font-semibold text-amber-700 flex items-center gap-1">
+                                <AlertTriangle className="w-3 h-3" /> Causes
+                              </div>
+                              <p className="text-foreground mt-0.5">{kb.causes}</p>
+                            </div>
+                            <div className="rounded border border-rose-200 bg-white/60 p-2">
+                              <div className="text-[10px] uppercase font-semibold text-rose-700 flex items-center gap-1">
+                                <Microscope className="w-3 h-3" /> Major symptom
+                              </div>
+                              <p className="text-foreground mt-0.5">{kb.majorSymptom}</p>
+                            </div>
+                            <div className={cn(
+                              "rounded border p-2",
+                              kb.chemicalTreatmentEffective ? "border-emerald-200 bg-emerald-50" : "border-amber-300 bg-amber-50"
+                            )}>
+                              <div className={cn(
+                                "text-[10px] uppercase font-semibold flex items-center gap-1",
+                                kb.chemicalTreatmentEffective ? "text-emerald-700" : "text-amber-800"
+                              )}>
+                                <Lightbulb className="w-3 h-3" /> Treatment
+                              </div>
+                              <p className="text-foreground mt-0.5">{kb.treatment}</p>
+                            </div>
+                            <div className="rounded border border-rose-200 bg-white/60 p-2">
+                              <div className="text-[10px] uppercase font-semibold text-blue-700 flex items-center gap-1">
+                                <Activity className="w-3 h-3" /> Damage handling
+                              </div>
+                              <p className="text-foreground mt-0.5">{kb.damageHandling}</p>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Voice agent dialogue preview */}
+                        {dialogue && (
+                          <div className="mt-3 rounded-md border bg-blue-50 border-blue-200 p-2.5">
+                            <div className="flex items-center gap-1.5 mb-1.5">
+                              <Volume2 className="w-3.5 h-3.5 text-blue-600" />
+                              <div className="text-xs font-semibold text-blue-800">Voice Agent Dialogue</div>
+                              <Badge variant="outline" className="text-[9px] ml-auto">EN · Amharic-ready</Badge>
+                            </div>
+                            <div className="space-y-1.5 text-[11px] text-foreground">
+                              <p className="italic"><span className="text-[10px] uppercase font-semibold text-blue-700 mr-1">Empathy:</span>{dialogue.empathy}</p>
+                              <p><span className="text-[10px] uppercase font-semibold text-blue-700 mr-1">Explanation:</span>{dialogue.explanation}</p>
+                              <p><span className="text-[10px] uppercase font-semibold text-blue-700 mr-1">Action:</span>{dialogue.immediateAction}</p>
+                              <p><span className="text-[10px] uppercase font-semibold text-blue-700 mr-1">Prevention:</span>{dialogue.futurePrevention}</p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()
                 ) : (
                   <div className="rounded-md bg-emerald-50 border border-emerald-200 p-2.5">
                     <div className="text-xs font-semibold text-emerald-700">Detection result</div>

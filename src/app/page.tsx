@@ -11,6 +11,7 @@ import { DiseaseDetectionView } from "@/components/dashboard/views/disease-detec
 import { SensorFeedView } from "@/components/dashboard/views/sensor-feed-view";
 import { AttentionHeatmapView } from "@/components/dashboard/views/attention-heatmap-view";
 import { InputDataView } from "@/components/dashboard/views/input-data-view";
+import { DiseaseAdvisorView } from "@/components/dashboard/views/disease-advisor-view";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, RefreshCw, Bell, Wheat } from "lucide-react";
@@ -50,6 +51,8 @@ export default function Home() {
         return <AttentionHeatmapView {...props} />;
       case "input":
         return <InputDataView siteId={selectedSiteId} />;
+      case "advisor":
+        return <DiseaseAdvisorView {...props} />;
       default:
         return null;
     }

@@ -4,7 +4,7 @@ import { MODULES, type ModuleId, type SiteId, SITES } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, MapPin, TrendingUp, Droplets, AlertTriangle,
-  Radio, Grid3x3, Wheat, Database,
+  Radio, Grid3x3, Wheat, Database, Brain,
 } from "lucide-react";
 
 const ICON_MAP: Record<string, React.ElementType> = {
@@ -16,6 +16,7 @@ const ICON_MAP: Record<string, React.ElementType> = {
   Radio,
   Grid3x3,
   Database,
+  Brain,
 };
 
 interface SidebarProps {

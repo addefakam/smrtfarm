@@ -425,7 +425,8 @@ export type ModuleId =
   | "disease"
   | "sensor"
   | "heatmap"
-  | "input";
+  | "input"
+  | "advisor";
 
 export interface ModuleDef {
   id: ModuleId;
@@ -443,4 +444,5 @@ export const MODULES: ModuleDef[] = [
   { id: "sensor",     label: "Sensor Feed",       description: "NPK probe live readings",                    icon: "Radio" },
   { id: "heatmap",    label: "Attention Heatmap", description: "Parcel grid by attention priority",          icon: "Grid3x3" },
   { id: "input",      label: "Input Data",        description: "Soil + reflectance + weather + shapefile",  icon: "Database" },
+  { id: "advisor",    label: "Disease Advisor",   description: "Inference engine + voice dialogue",          icon: "Brain" },
 ];
