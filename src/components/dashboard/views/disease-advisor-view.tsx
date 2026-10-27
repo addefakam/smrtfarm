@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { VoicePlayer } from "@/components/dashboard/voice-player";
 import { cn } from "@/lib/utils";
 import {
   Brain, Stethoscope, Volume2, Microscope, Cloud, Activity,
@@ -393,6 +394,17 @@ export function DiseaseAdvisorView({ siteId, selectedParcelId, onSelectParcel }:
                     const dialogue = generateVoiceDialogue(selectedResult, selectedParcel, { includeInferenceNote: true });
                     return (
                       <div className="space-y-2 text-xs text-foreground">
+                        <VoicePlayer
+                          sections={[
+                            { label: "Empathy", text: dialogue.empathy },
+                            { label: "Explanation", text: dialogue.explanation },
+                            { label: "Action", text: dialogue.immediateAction },
+                            { label: "Prevention", text: dialogue.futurePrevention },
+                          ]}
+                          title="dialogue"
+                          buttonLabel="Speak dialogue"
+                          className="mb-2"
+                        />
                         <div>
                           <span className="text-[10px] uppercase font-semibold text-blue-700">Empathy &amp; Identification:</span>
                           <p className="italic">{dialogue.empathy}</p>

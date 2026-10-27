@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { AlertTriangle, Plane, Activity, Image as ImageIcon, Volume2, Microscope, Lightbulb } from "lucide-react";
+import { VoicePlayer } from "@/components/dashboard/voice-player";
 
 interface DiseaseDetectionViewProps {
   siteId: SiteId;
@@ -334,6 +335,18 @@ export function DiseaseDetectionView({ siteId, selectedParcelId, onSelectParcel 
                               <div className="text-xs font-semibold text-blue-800">Voice Agent Dialogue</div>
                               <Badge variant="outline" className="text-[9px] ml-auto">EN · Amharic-ready</Badge>
                             </div>
+                            <VoicePlayer
+                              sections={[
+                                { label: "Empathy", text: dialogue.empathy },
+                                { label: "Explanation", text: dialogue.explanation },
+                                { label: "Action", text: dialogue.immediateAction },
+                                { label: "Prevention", text: dialogue.futurePrevention },
+                              ]}
+                              title="advisory"
+                              buttonLabel="Speak advisory"
+                              compact
+                              className="mb-2"
+                            />
                             <div className="space-y-1.5 text-[11px] text-foreground">
                               <p className="italic"><span className="text-[10px] uppercase font-semibold text-blue-700 mr-1">Empathy:</span>{dialogue.empathy}</p>
                               <p><span className="text-[10px] uppercase font-semibold text-blue-700 mr-1">Explanation:</span>{dialogue.explanation}</p>

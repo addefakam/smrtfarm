@@ -1,13 +1,17 @@
 "use client";
 
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
   Droplets, Microscope, AlertTriangle, Activity, Cloud,
+  Volume2, Square,
   type LucideIcon,
 } from "lucide-react";
 import type { Intervention } from "@/hooks/use-live-sensor-data";
+import { useTTS } from "@/hooks/use-tts";
 
 interface InterventionsFeedProps {
   interventions: Intervention[];
@@ -45,11 +49,42 @@ export function InterventionsFeed({
   maxItems = 8,
   compact = false,
 }: InterventionsFeedProps) {
+  const { supported: ttsSupported, speak: ttsSpeak, stop: ttsStop, isSpeaking: ttsIsSpeaking, currentText: ttsCurrentText } = useTTS();
+  const [speakingInterventionId, setSpeakingInterventionId] = useState<string | null>(null);
+
   const visibleInterventions = interventions.slice(0, maxItems);
   const counts = interventions.reduce((acc, i) => {
     acc[i.severity] = (acc[i.severity] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
+
+  // Compose a Voice Agent dialogue for an intervention
+  function composeInterventionDialogue(iv: Intervention): string {
+    return [
+      `For parcel ${iv.parcelCode} owned by ${iv.owner}.`,
+      `Pattern detected: ${iv.pattern}.`,
+      `${iv.message}.`,
+      `Recommended action: ${iv.action}.`,
+    ].join(" ");
+  }
+
+  function handleSpeakIntervention(iv: Intervention) {
+    if (speakingInterventionId === iv.id && ttsIsSpeaking) {
+      ttsStop();
+      setSpeakingInterventionId(null);
+      return;
+    }
+    const text = composeInterventionDialogue(iv);
+    ttsSpeak(text, {
+      onEnd: () => setSpeakingInterventionId(null),
+    });
+    setSpeakingInterventionId(iv.id);
+  }
+
+  function handleStopAll() {
+    ttsStop();
+    setSpeakingInterventionId(null);
+  }
 
   return (
     <Card className="h-full">
@@ -133,9 +168,30 @@ export function InterventionsFeed({
                         <div className="text-xs text-foreground font-medium mt-1">
                           {iv.message}
                         </div>
-                        <div className="text-[11px] mt-1 px-2 py-1 rounded bg-muted/40 text-foreground border-l-2 border-emerald-500">
-                          <span className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold mr-1">Action:</span>
-                          {iv.action}
+                        <div className="text-[11px] mt-1 px-2 py-1 rounded bg-muted/40 text-foreground border-l-2 border-emerald-500 flex items-start gap-2">
+                          <div className="flex-1">
+                            <span className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold mr-1">Action:</span>
+                            {iv.action}
+                          </div>
+                          {ttsSupported && (
+                            <button
+                              onClick={() => handleSpeakIntervention(iv)}
+                              disabled={speakingInterventionId !== null && speakingInterventionId !== iv.id}
+                              className={cn(
+                                "flex-shrink-0 inline-flex items-center justify-center w-7 h-7 rounded border transition-colors disabled:opacity-30 disabled:cursor-not-allowed",
+                                speakingInterventionId === iv.id
+                                  ? "bg-blue-600 text-white border-blue-600 animate-pulse"
+                                  : "bg-card border-border hover:bg-blue-50 hover:border-blue-300"
+                              )}
+                              title={speakingInterventionId === iv.id ? "Stop speaking" : "Speak this intervention"}
+                            >
+                              {speakingInterventionId === iv.id ? (
+                                <Square className="w-3 h-3" />
+                              ) : (
+                                <Volume2 className="w-3 h-3" />
+                              )}
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
