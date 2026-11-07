@@ -2,7 +2,7 @@
 
 **Remote-sensing-enabled decision-support system for Ethiopian wheat farming — pilot deployment at Bishoftu, Asella, and Ambo Agricultural Research Centers (EIAR).**
 
-![Status](https://img.shields.io/badge/status-v1.6.1--live-brightgreen)
+![Status](https://img.shields.io/badge/status-v1.6.2--live-brightgreen)
 ![License](https://img.shields.io/badge/license-CC0%201.0-blue)
 ![Stack](https://img.shields.io/badge/stack-Next.js%2016%20%7C%20TypeScript%20%7C%20Tailwind%204%20%7C%20shadcn%2Fui-emerald)
 ![Deploy](https://img.shields.io/badge/deploy-Vercel%20%2B%20Render-blueviolet)
@@ -15,8 +15,8 @@ The dashboard deploys to **Vercel (recommended, native Next.js)** or **Render (a
 
 The dashboard deploys to either:
 
-- **Vercel** (recommended): `https://smartfarming-ecosystem.vercel.app` _(replace with your actual Vercel URL after deploy)_
-- **Render** (alternative): `https://precision-farming-dashboard.onrender.com` _(replace with your actual Render URL after deploy)_
+- **Vercel** (recommended): `https://smrtfarm.vercel.app` _(replace with your actual Vercel URL after deploy)_
+- **Render** (alternative): `https://smrtfarm.onrender.com` _(replace with your actual Render URL after deploy)_
 
 ## Project Origin
 
@@ -102,7 +102,7 @@ Vercel is the **natural fit** for Next.js (Vercel created Next.js). The dashboar
 1. Go to **https://vercel.com/new**
 2. Sign in with GitHub (or create a free account)
 3. Click **"Import Project"**
-4. Select the repo: `DivergenTechnology/smartfarming-ecosystem`
+4. Select the repo: `addefakam/smrtfarm`
 5. Vercel auto-detects Next.js from `vercel.json` — no config needed
 
 ### Step 2 — Configure Environment Variables (optional)
@@ -122,7 +122,7 @@ In the Vercel deploy dialog, click **"Environment Variables"** and add (all opti
 
 ### Step 3 — Deploy
 
-Click **"Deploy"**. Vercel builds in ~30–60s and assigns a URL like `https://smartfarming-ecosystem.vercel.app`.
+Click **"Deploy"**. Vercel builds in ~30–60s and assigns a URL like `https://smrtfarm.vercel.app`.
 
 ### Step 4 — Verify
 
@@ -209,4 +209,4 @@ See [`CONTRIBUTING.md`](./CONTRIBUTING.md). Conventional commits (feat/fix/docs/
 ## Sponsors
 
 - **Ethiopian Institute of Agricultural Research (EIAR)** — project sponsor and pilot-site host
-- **Divergen Technology** — engineering lead and repository maintainer
+- **addefakam** — engineering lead and repository maintainer

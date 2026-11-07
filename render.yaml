@@ -1,7 +1,7 @@
 # Render Blueprint — Precision Farming Ecosystem Dashboard
 # https://render.com/docs/blueprint-spec
 # Deploy this by:
-#   1. Pushing this repo to GitHub (DivergenTechnology/smartfarming-ecosystem)
+#   1. Pushing this repo to GitHub (addefakam/smrtfarm)
 #   2. Creating a new Blueprint on Render: https://dashboard.render.com/select-blueprint
 #   3. Connecting the GitHub repo — Render will read this render.yaml automatically.
 

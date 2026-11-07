@@ -4,11 +4,11 @@ Thank you for your interest in contributing! This project follows an open, trans
 
 ## Getting Started
 
-1. **Fork the repository** at https://github.com/DivergenTechnology/smartfarming-ecosystem
+1. **Fork the repository** at https://github.com/addefakam/smrtfarm
 2. **Clone your fork** locally:
    ```bash
-   git clone https://github.com/<your-username>/smartfarming-ecosystem.git
-   cd smartfarming-ecosystem
+   git clone https://github.com/<your-username>/smrtfarm.git
+   cd smrtfarm
    ```
 3. **Install dependencies**:
    ```bash

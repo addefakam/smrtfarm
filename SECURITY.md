@@ -4,7 +4,7 @@
 
 **Do NOT open a public issue for security vulnerabilities.**
 
-Instead, email security@divergentechnology.com with:
+Instead, email security@addefakam.dev with:
 1. A description of the vulnerability
 2. Steps to reproduce
 3. Potential impact
@@ -14,7 +14,7 @@ We acknowledge all reports within 48 hours and aim to publish a fix within 30 da
 
 ## Scope
 
-This policy covers the `DivergenTechnology/smartfarming-ecosystem` repository only. Out of scope:
+This policy covers the `addefakam/smrtfarm` repository only. Out of scope:
 - Vulnerabilities in third-party dependencies (report upstream)
 - Vulnerabilities in the production Firebase / PostGIS infrastructure (report to EIAR IT directly)
 - Social engineering attacks on project maintainers
