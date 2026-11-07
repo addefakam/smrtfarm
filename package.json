@@ -1,13 +1,15 @@
 {
   "name": "precision-farming-ecosystem",
-  "version": "1.6.0",
+  "version": "1.6.1",
   "private": true,
   "description": "Remote-sensing-enabled decision-support system for irrigated wheat farming in Ethiopia — pilot at Bishoftu, Asella, and Ambo ARC.",
   "license": "CC0-1.0",
   "scripts": {
     "dev": "next dev -p 3000",
-    "build": "next build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/",
-    "start": "NODE_ENV=production node .next/standalone/server.js",
+    "build": "next build",
+    "build:standalone": "next build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/",
+    "start": "next start",
+    "start:standalone": "NODE_ENV=production node .next/standalone/server.js",
     "lint": "eslint ."
   },
   "dependencies": {
